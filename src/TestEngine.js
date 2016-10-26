@@ -1,8 +1,8 @@
 /**
  * Created by WEstrada on 10/6/2016.
  */
-Ext.define('Inventory.TestUtils', {
-    name: 'testutils',
+Ext.define('Test.TestEngine', {
+    name: 'testengine',
 
     statics: {
         /**

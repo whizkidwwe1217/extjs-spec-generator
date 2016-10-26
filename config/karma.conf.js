@@ -22,8 +22,7 @@ module.exports = function(config) {
 
     // list of files to exclude
     exclude: [
-      '../src/spec-gen.js',
-      '../src/TestUtils.js'
+      '../src/spec-gen.js'
     ],
 
 

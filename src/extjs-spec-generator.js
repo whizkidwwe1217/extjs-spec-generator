@@ -160,7 +160,7 @@ function generateModelSpec(config, className, properties) {
     });
 
     let spec = `
-    ${config.moduleName}.TestUtils.testModel({
+    ${config.moduleName}.TestEngine.testModel({
         name: '${className}',
         base: '${base}',${!_.isUndefined(idProperty) && !_.isNull(idProperty) ? "idProperty: '" + idProperty + "'," : ""}
         dependencies: ${JSON.stringify(dependencies)},
@@ -255,7 +255,7 @@ function generateStoreSpec(gulpConfig, className, properties) {
         }
     });
     var spec = `
-        ${gulpConfig.moduleName}.TestUtils.testStore({
+        ${gulpConfig.moduleName}.TestEngine.testStore({
             name: '${className}',
             alias: ${_.isUndefined(alias) ? null : JSON.stringify(alias) },
             base: '${base}',
@@ -287,7 +287,7 @@ function generateViewModelSpec(config, className, properties) {
     });
 
     var spec = `
-        ${config.moduleName}.TestUtils.testViewModel({
+        ${config.moduleName}.TestEngine.testViewModel({
             name: '${className}',
             alias: '${alias}',
             base: '${base}',    
@@ -325,7 +325,7 @@ function generateViewControllerSpec(config, className, properties) {
     });
 
     var spec = `
-        ${config.moduleName}.TestUtils.testViewController({
+        ${config.moduleName}.TestEngine.testViewController({
             name: '${className}',
             alias: '${alias}',
             base: '${base}',    
