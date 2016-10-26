@@ -6,24 +6,32 @@ var Vinyl = require('vinyl');
 var config = {
     type: "model",
     moduleName: "Inventory",
-    destDir: "test/specs",
-    dependencyDestDir: "test/mock"
+    destDir: "src/test/specs",
+    dependencyDestDir: "src/test/mock"
 };
+
 var src = "src/Adjustment.js";
-var buffer = new Buffer("Test");
 
 fs.readFile(src, 'utf8', function(err, data) {  
     if (err) throw err;
     
     var file = new Vinyl({
-        cwd: 'src/test/',
-        base: 'src/test/',
+        cwd: '/',
+        base: '/',
         path: src,
         contents: new Buffer(data)
     });
 
     var generated = gen.generateSpecs(file, config);
-    console.log(generated.path);
+    fs.writeFile(generated.path, generated.contents, 'utf-8', function(err) {
+        if(err)
+            console.log(err);
+    });
+    //var stream = fs.createWriteStream(generated.path);
+    // stream.once('open', function(fd) {
+    //     stream.write(generated.contents);
+    //     stream.end();
+    // });
 });
 // http.createServer(function (request, response) {
 //     // Send the HTTP header 

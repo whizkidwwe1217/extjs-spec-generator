@@ -64,14 +64,12 @@ function generateSpecs(file, config) {
             var newPath = parsePath(file.relative);
 
             if (specType === "model" || specType === "store")
-                file.path = config.destDir + "\\" + className.replace(namespace, "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase() + "." + config.type.toLowerCase() + ".spec.js";
+                file.path = `${config.destDir}\\${className.replace(namespace, "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.${config.type.toLowerCase()}.spec.js`;
             else {
                 if (controllerType === "Ext.app.ViewController") {
-                    file.path = config.destDir + "\\" + 
-                        className.replace(config.moduleName + ".view.", "").replace("ViewController", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase() + ".viewcontroller.spec.js";  
+                    file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewController", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewcontroller.spec.js`;
                 } else if (controllerType === "Ext.app.ViewModel") {
-                    file.path = config.destDir + "\\" +
-                        className.replace(config.moduleName + ".view.", "").replace("ViewModel", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase() + ".viewmodel.spec.js"; 
+                    file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewModel", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewmodel.spec.js`;
                 }
             }
             file.contents = new Buffer(spec);
@@ -161,9 +159,15 @@ function generateModelSpec(config, className, properties) {
         }
     });
 
-    var spec = config.moduleName + ".TestUtils.testModel({name: '" + className + "', base: '" + base + "', " +
-        !_.isUndefined(idProperty) && !_.isNull(idProperty) ? "idProperty: '" + idProperty + "'," : "" +
-        "dependencies: " + JSON.stringify(dependencies) + ", fields: " + JSON.stringify(fields) + ", validators: [" + JSON.stringify(validators) + "]});";
+    let spec = `
+    ${config.moduleName}.TestUtils.testModel({
+        name: '${className}',
+        base: '${base}',${!_.isUndefined(idProperty) && !_.isNull(idProperty) ? "idProperty: '" + idProperty + "'," : ""}
+        dependencies: ${JSON.stringify(dependencies)},
+        fields: ${JSON.stringify(fields)},
+        validators: [${JSON.stringify(validators)}]
+    });
+    `;
 
     writeDependencyFile(config, className, dependencies);
 
@@ -250,9 +254,15 @@ function generateStoreSpec(gulpConfig, className, properties) {
             }
         }
     });
-    var spec = gulpConfig.moduleName + ".TestUtils.testStore({name: '" + className +
-        "', alias: " + _.isUndefined(alias) ? "null" : JSON.stringify(alias) + ", base: '" + base + "', dependencies: " + JSON.stringify(dependencies) +
-        ", config: " + JSON.stringify(config) + "});";
+    var spec = `
+        ${gulpConfig.moduleName}.TestUtils.testStore({
+            name: '${className}',
+            alias: ${_.isUndefined(alias) ? null : JSON.stringify(alias) },
+            base: '${base}',
+            dependencies: ${JSON.stringify(dependencies)},
+            config: ${JSON.stringify(config)}
+        });
+    `;
 
     writeDependencyFile(gulpConfig, className, dependencies);
 
@@ -276,7 +286,14 @@ function generateViewModelSpec(config, className, properties) {
         }
     });
 
-    var spec = config.moduleName + ".TestUtils.testViewModel({name: '" + className + "', alias: '" + alias + "', base: '" + base + "', dependencies: " + dependencies + "});";
+    var spec = `
+        ${config.moduleName}.TestUtils.testViewModel({
+            name: '${className}',
+            alias: '${alias}',
+            base: '${base}',    
+            dependencies: ${JSON.stringify(dependencies)}
+        });
+    `;
 
     writeDependencyFile(config, className, dependencies);
 
@@ -307,7 +324,14 @@ function generateViewControllerSpec(config, className, properties) {
         }
     });
 
-    var spec = config.moduleName + ".TestUtils.testViewController({name: '" + className + "', alias: '" + alias + "', base: '" + base + "', dependencies: " + JSON.stringify(dependencies) + "});";
+    var spec = `
+        ${config.moduleName}.TestUtils.testViewController({
+            name: '${className}',
+            alias: '${alias}',
+            base: '${base}',    
+            dependencies: ${JSON.stringify(dependencies)}
+        });
+    `;
 
     writeDependencyFile(config, className, dependencies);
 
@@ -371,7 +395,7 @@ function writeDependencyFile(config, className, dependencies) {
             }
             if (name != "Ext" && (name.toString().toLowerCase() !== config.moduleName.toLowerCase())) {
                 var filename = d;
-                var data = "Ext.define(" + d + "), {});";
+                var data = "Ext.define('" + d + "', {});";
                 fs.writeFile(config.dependencyDestDir + "\\" + filename + ".js", data, 'utf-8', function (e) {
 
                 });
