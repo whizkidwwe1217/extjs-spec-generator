@@ -1,6 +1,6 @@
 {
   "name": "extjs-spec-generator",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Generates unit test specs from ExtJs classes",
   "scripts": {
     "test": "karma start config/karma.conf.js",
@@ -24,10 +24,10 @@
   },
   "license": "Apache 2.0",
   "dependencies": {
-    "esprima": "^3.1.0", 
+    "esprima": "^3.1.0",
     "path": "^0.12.7",
     "underscore": "^1.8.3",
-    "vinyl": "^2.0.0" 
+    "vinyl": "^2.0.0"
   },
   "devDependencies": {
     "browserify": "^13.1.1",
