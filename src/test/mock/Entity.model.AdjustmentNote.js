@@ -1,1 +1,0 @@
-Ext.define('Entity.model.AdjustmentNote', {});

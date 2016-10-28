@@ -2,7 +2,7 @@
 /**
  * Created by LZabala on 3/27/2015.
  */
-Ext.define('Inventory.model.AdjustmentDetail', {
+Ext.define('SampleModule.model.AdjustmentDetail', {
     extend: 'iRely.BaseEntity',
 
     requires: [

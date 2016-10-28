@@ -5,7 +5,7 @@ var Vinyl = require('vinyl');
 
 var config = {
     type: "model",
-    moduleName: "Inventory",
+    moduleName: "SampleModule",
     dependencyDir: "src/model",
     resolveModuleDependencies: true,
     destDir: "src/test/specs",

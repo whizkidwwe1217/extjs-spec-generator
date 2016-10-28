@@ -1,1 +1,0 @@
-Ext.define('Inventory.model.AdjustmentNote', {});
