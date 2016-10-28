@@ -6,16 +6,18 @@ var Vinyl = require('vinyl');
 var config = {
     type: "model",
     moduleName: "Inventory",
+    dependencyDir: "src/model",
+    resolveModuleDependencies: true,
     destDir: "src/test/specs",
     formatContent: true,
     dependencyDestDir: "src/test/mock"
 };
 
-var src = "src/Adjustment.js";
+var src = "src/model/Adjustment.js";
 
-fs.readFile(src, 'utf8', function(err, data) {  
+fs.readFile(src, 'utf8', function (err, data) {
     if (err) throw err;
-    
+
     var file = new Vinyl({
         cwd: '/',
         base: '/',
@@ -24,16 +26,85 @@ fs.readFile(src, 'utf8', function(err, data) {
     });
 
     var generated = gen.generateSpecs(file, config);
-    fs.writeFile(generated.path, generated.contents, 'utf-8', function(err) {
-        if(err)
+    fs.writeFile(generated.path, generated.contents, 'utf-8', function (err) {
+        if (err)
             console.log(err);
     });
-    //var stream = fs.createWriteStream(generated.path);
-    // stream.once('open', function(fd) {
-    //     stream.write(generated.contents);
-    //     stream.end();
-    // });
+
 });
+
+var Path = require('path');
+var esprima = require('esprima');
+var _ = require('underscore');
+
+function resolveDependencies(dir, dependency) {
+    var walkSync = function (dir, filelist) {
+        files = fs.readdirSync(dir);
+        filelist = filelist || [];
+        files.forEach(function (file) {
+            if (fs.statSync(Path.join(dir, file)).isDirectory()) {
+                filelist = walkSync(Path.join(dir, file), filelist);
+            }
+            else {
+                parseFile(Path.join(dir, file), (e) => {
+                    if(dependency === dependency.replace('"', ''))
+                        console.log(dependency);
+                });
+                
+                filelist.push(file);
+            }
+        });
+        return filelist;
+    };
+
+    var list = [];
+    walkSync(dir, list);
+    return list;
+}
+
+//resolveDependencies('src/model', '"Inventory.model.Adjustment"');
+
+// var srFile = fs.readFile(src, 'utf-8', function (err, data) {
+//     if (err) {
+//         console.log(err);
+//         response.end('Error: ' + err);
+//     } else {
+//         var tree = esprima.parse(data);
+//         console.log(getClassName(tree));
+//     }
+// });
+
+function parseFile(filename, callback) {
+    fs.readFile(filename, 'utf-8', function (err, data) {
+        if (err) {
+            throw err;
+        } else {
+            var tree = esprima.parse(data);
+            className = getClassName(tree);
+            callback(className);
+        }
+    });
+}
+
+function getClassName(tree) {
+    var className;
+
+    if (tree.body[0] && tree.body[0].expression)
+        args = tree.body[0].expression.arguments;
+    else {
+        invalidFiles.push(file.path);
+    }
+
+    if (args) {
+        var literal = _.findWhere(args, { type: 'Literal' });
+        var objectExp = _.findWhere(args, { type: 'ObjectExpression' });
+        var properties = objectExp.properties;
+        className = literal.value;
+    }
+    return className;
+}
+
+
 // http.createServer(function (request, response) {
 //     // Send the HTTP header 
 //     // HTTP Status: 200 : OK

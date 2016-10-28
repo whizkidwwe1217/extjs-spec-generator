@@ -388,6 +388,96 @@ function getProxy(properties) {
     return proxy;
 }
 
+function replaceAll(haystack, needle, replacement)
+{
+    return haystack.split(needle).join(replacement);
+}
+
+function resolveDependencies(src, dest, dependency, formatCode) {
+    var dir = src;
+    var dep = replaceAll(dependency, '"', '');
+    
+    var walkSync = function (dir, filelist, classlist) {
+        var files = fs.readdirSync(dir);
+        filelist = filelist || [];
+        classlist = classlist || [];
+        files.forEach(function (file) {
+            if (fs.statSync(Path.join(dir, file)).isDirectory()) {
+                walkSync(Path.join(dir, file));
+            }
+            else {
+                filelist.push(file);  
+                var className = parseFile(Path.join(src, file));
+                if(_.indexOf(classlist, className) === -1)
+                    classlist.push(className);
+            }
+        });
+    };
+
+    var sourceFiles = [], classes = [];
+    walkSync(dir, sourceFiles, classes);
+    if (_.indexOf(classes, dep) === -1) {
+        var data = formatContent(formatCode, "Ext.define('" + dep + "', {});");
+        fs.writeFile(replaceAll(dest, "/", "\\") + "\\" + dep + ".js", data, 'utf-8', function (err) {
+
+        });
+    }
+   // console.log(classes);
+    // for(var i = 0; i < list.length; i++) {
+    //     parseFile(Path.join(src, list[i]), (e) => {
+    //         if (e !== dep) {
+    //             console.log("S:" + e + ", D: " + dep);
+    //             // var data = formatContent(formatCode, "Ext.define('" + dependency + "', {});");
+    //             // fs.writeFile(replaceAll(dest, "/", "\\") + "\\" + dependency + ".js", data, 'utf-8', function (err) {
+
+    //             // });
+    //         }
+    //     });   
+    // }
+    
+}
+
+function parseFile(filename) {
+    var data = fs.readFileSync(filename, 'utf-8');
+    var tree = esprima.parse(data);
+    return getClassName(tree);
+}
+
+function getClassName(tree) {
+    var className;
+    var args;
+    if (tree.body[0] && tree.body[0].expression)
+        args = tree.body[0].expression.arguments;
+
+    if (args) {
+        var literal = _.findWhere(args, { type: 'Literal' });
+        var objectExp = _.findWhere(args, { type: 'ObjectExpression' });
+        var properties = objectExp.properties;
+        className = literal.value;
+    }
+    return className;
+}
+
+function traversePath(dir) {
+    var walkSync = function (dir, filelist) {
+        files = fs.readdirSync(dir);
+        filelist = filelist || [];
+        files.forEach(function (file) {
+            if (fs.statSync(Path.join(dir, file)).isDirectory()) {
+                filelist = walkSync(Path.join(dir, file), filelist);
+            }
+            else {
+                filelist.push(file);
+            }
+        });
+        return filelist;
+    };
+
+    var list = [];
+    walkSync(dir, list);
+    return list;
+}
+
 function writeDependencyFile(config, className, dependencies) {
     if (config.moduleName) {
         _.each(dependencies, function (d) {
@@ -396,12 +486,20 @@ function writeDependencyFile(config, className, dependencies) {
             if (s.length > 0) {
                 name = s;
             }
-            if (name != "Ext" && (name.toString().toLowerCase() !== config.moduleName.toLowerCase())) {
+            if (name != "Ext") {
                 var filename = d;
-                var data = formatContent(config.formatContent, "Ext.define('" + d + "', {});");
-                fs.writeFile(config.dependencyDestDir + "\\" + filename + ".js", data, 'utf-8', function (e) {
+                if (name.toString().toLowerCase() !== config.moduleName.toLowerCase()) {
+                    var data = formatContent(config.formatContent, "Ext.define('" + d + "', {});");
+                    fs.writeFile(config.dependencyDestDir + "\\" + filename + ".js", data, 'utf-8', function (e) {
 
-                });
+                    });
+                } else {
+                    if (config.resolveModuleDependencies === true) {
+                        if (config.dependencyDir, config.formatContent) {
+                            resolveDependencies(config.dependencyDir, config.dependencyDestDir, d);
+                        }
+                    }
+                }
             }
         });
     }
