@@ -1,8 +1,8 @@
 /**
  * Created by WEstrada on 10/6/2016.
  */
-Ext.define('Test.TestEngine', {
-    name: 'testengine',
+Ext.define('UnitTestEngine', {
+    name: 'unittestengine',
 
     statics: {
         /**

@@ -2,8 +2,11 @@ var esprima = require('esprima');
 var _ = require('underscore');
 var Path = require('path');
 var fs = require('fs');
+var beautify = require('js-beautify').js_beautify;
 
 function generateSpecs(file, config) {
+    if(config.formatContent === undefined)
+        config.formatContent = true;
     var specType = config.type;
         if(!specType || (specType !== 'model' && specType !== 'store' && specType != 'viewcontroller' && specType !== 'controller' && specType != 'viewmodel')) {
             file.contents = new Buffer("You can delete this file.");
@@ -72,7 +75,7 @@ function generateSpecs(file, config) {
                     file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewModel", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewmodel.spec.js`;
                 }
             }
-            file.contents = new Buffer(spec);
+            file.contents = new Buffer(formatContent(config.formatContent, spec));
             // send the updated file down the pipe
             //cb(null, file);
             return file;
@@ -160,7 +163,7 @@ function generateModelSpec(config, className, properties) {
     });
 
     let spec = `
-    ${config.moduleName}.TestEngine.testModel({
+    UnitTestEngine.testModel({
         name: '${className}',
         base: '${base}',${!_.isUndefined(idProperty) && !_.isNull(idProperty) ? "idProperty: '" + idProperty + "'," : ""}
         dependencies: ${JSON.stringify(dependencies)},
@@ -255,7 +258,7 @@ function generateStoreSpec(gulpConfig, className, properties) {
         }
     });
     var spec = `
-        ${gulpConfig.moduleName}.TestEngine.testStore({
+        UnitTestEngine.testStore({
             name: '${className}',
             alias: ${_.isUndefined(alias) ? null : JSON.stringify(alias) },
             base: '${base}',
@@ -287,7 +290,7 @@ function generateViewModelSpec(config, className, properties) {
     });
 
     var spec = `
-        ${config.moduleName}.TestEngine.testViewModel({
+        UnitTestEngine.testViewModel({
             name: '${className}',
             alias: '${alias}',
             base: '${base}',    
@@ -325,7 +328,7 @@ function generateViewControllerSpec(config, className, properties) {
     });
 
     var spec = `
-        ${config.moduleName}.TestEngine.testViewController({
+        UnitTestEngine.testViewController({
             name: '${className}',
             alias: '${alias}',
             base: '${base}',    
@@ -395,13 +398,17 @@ function writeDependencyFile(config, className, dependencies) {
             }
             if (name != "Ext" && (name.toString().toLowerCase() !== config.moduleName.toLowerCase())) {
                 var filename = d;
-                var data = "Ext.define('" + d + "', {});";
+                var data = formatContent(config.formatContent, "Ext.define('" + d + "', {});");
                 fs.writeFile(config.dependencyDestDir + "\\" + filename + ".js", data, 'utf-8', function (e) {
 
                 });
             }
         });
     }
+}
+
+function formatContent(format, data) {
+    return format ? beautify(data) : data; 
 }
 
 exports.generateSpecs = generateSpecs;

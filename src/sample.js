@@ -7,6 +7,7 @@ var config = {
     type: "model",
     moduleName: "Inventory",
     destDir: "src/test/specs",
+    formatContent: true,
     dependencyDestDir: "src/test/mock"
 };
 
