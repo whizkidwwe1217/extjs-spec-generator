@@ -100,7 +100,7 @@ Ext.define('UnitTestEngine', {
                                     should.exist(fields, 'No fields');
                                     _.isEmpty(fields).should.be.false;
                                     _.each(fieldList, function (field) {
-                                        Inventory.TestUtils.shouldHaveField(fields, field.name, field.type);
+                                        UnitTestEngine.shouldHaveField(fields, field.name, field.type);
                                     });
                                 } else
                                     should.exist(model, "Model does not exists.");
@@ -109,7 +109,7 @@ Ext.define('UnitTestEngine', {
                             it('should have reference model(s)', function () {
                                 if(isValid) {
                                     _.each(referenceList, function (ref) {
-                                        Inventory.TestUtils.shouldHaveReference(fields, ref.name, ref.type, ref.role);
+                                        UnitTestEngine.shouldHaveReference(fields, ref.name, ref.type, ref.role);
                                     })
                                 } else
                                     should.exist(model, "Model does not exists.");
