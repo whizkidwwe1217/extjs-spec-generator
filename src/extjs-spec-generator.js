@@ -3,6 +3,7 @@ var _ = require('underscore');
 var Path = require('path');
 var fs = require('fs');
 var beautify = require('js-beautify').js_beautify;
+var glob = require('glob');
 
 function generateSpecs(file, config) {
     if(config.formatContent === undefined)
@@ -394,6 +395,25 @@ function replaceAll(haystack, needle, replacement)
 }
 
 function resolveDependencies(src, dest, dependency, formatCode) {
+    var referenceClass = replaceAll(dependency, '"', '');
+    glob(src, function(err, files) {
+        var classes = [];
+        _.each(files, function(f) {
+            var className = parseFile(f);
+            if(_.indexOf(classes, className) === -1)
+                classes.push(className);
+        });
+
+        if (_.indexOf(classes, referenceClass) === -1) {
+            var data = formatContent(formatCode, "Ext.define('" + referenceClass + "', {});");
+            fs.writeFile(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js", data, 'utf-8', function (err) {
+
+            });
+        }
+    });
+}
+
+function resolveDependenciesDeprecated(src, dest, dependency, formatCode) {
     var dir = src;
     var dep = replaceAll(dependency, '"', '');
     
@@ -434,7 +454,6 @@ function resolveDependencies(src, dest, dependency, formatCode) {
     //         }
     //     });   
     // }
-    
 }
 
 function parseFile(filename) {

@@ -6,7 +6,7 @@ var Vinyl = require('vinyl');
 var config = {
     type: "model",
     moduleName: "SampleModule",
-    dependencyDir: "src/model",
+    dependencyDir: "src/model/**/*.js",
     resolveModuleDependencies: true,
     destDir: "src/test/specs",
     formatContent: true,
@@ -32,78 +32,6 @@ fs.readFile(src, 'utf8', function (err, data) {
     });
 
 });
-
-var Path = require('path');
-var esprima = require('esprima');
-var _ = require('underscore');
-
-function resolveDependencies(dir, dependency) {
-    var walkSync = function (dir, filelist) {
-        files = fs.readdirSync(dir);
-        filelist = filelist || [];
-        files.forEach(function (file) {
-            if (fs.statSync(Path.join(dir, file)).isDirectory()) {
-                filelist = walkSync(Path.join(dir, file), filelist);
-            }
-            else {
-                parseFile(Path.join(dir, file), (e) => {
-                    if(dependency === dependency.replace('"', ''))
-                        console.log(dependency);
-                });
-                
-                filelist.push(file);
-            }
-        });
-        return filelist;
-    };
-
-    var list = [];
-    walkSync(dir, list);
-    return list;
-}
-
-//resolveDependencies('src/model', '"Inventory.model.Adjustment"');
-
-// var srFile = fs.readFile(src, 'utf-8', function (err, data) {
-//     if (err) {
-//         console.log(err);
-//         response.end('Error: ' + err);
-//     } else {
-//         var tree = esprima.parse(data);
-//         console.log(getClassName(tree));
-//     }
-// });
-
-function parseFile(filename, callback) {
-    fs.readFile(filename, 'utf-8', function (err, data) {
-        if (err) {
-            throw err;
-        } else {
-            var tree = esprima.parse(data);
-            className = getClassName(tree);
-            callback(className);
-        }
-    });
-}
-
-function getClassName(tree) {
-    var className;
-
-    if (tree.body[0] && tree.body[0].expression)
-        args = tree.body[0].expression.arguments;
-    else {
-        invalidFiles.push(file.path);
-    }
-
-    if (args) {
-        var literal = _.findWhere(args, { type: 'Literal' });
-        var objectExp = _.findWhere(args, { type: 'ObjectExpression' });
-        var properties = objectExp.properties;
-        className = literal.value;
-    }
-    return className;
-}
-
 
 // http.createServer(function (request, response) {
 //     // Send the HTTP header 
