@@ -6,81 +6,81 @@ var beautify = require('js-beautify').js_beautify;
 var glob = require('glob');
 
 function generateSpecs(file, config) {
-    if(config.formatContent === undefined)
+    if (config.formatContent === undefined)
         config.formatContent = true;
     var specType = config.type;
-        if(!specType || (specType !== 'model' && specType !== 'store' && specType != 'viewcontroller' && specType !== 'controller' && specType != 'viewmodel')) {
-            file.contents = new Buffer("You can delete this file.");
-            file.path = config.destDir + "\\trash.tmp";
-            //cb(null, file);
-            return file;
-        }
-        var fileContent = file.contents.toString();
-        var tree = esprima.parse(fileContent);
-        var args = null;
-        var invalidFiles = [];
-        if(tree.body[0] && tree.body[0].expression)
-            args = tree.body[0].expression.arguments;
-        else {
-            invalidFiles.push(file.path);
-        }
+    if (!specType || (specType !== 'model' && specType !== 'store' && specType != 'viewcontroller' && specType !== 'controller' && specType != 'viewmodel')) {
+        file.contents = new Buffer("You can delete this file.");
+        file.path = config.destDir + "\\trash.tmp";
+        //cb(null, file);
+        return file;
+    }
+    var fileContent = file.contents.toString();
+    var tree = esprima.parse(fileContent);
+    var args = null;
+    var invalidFiles = [];
+    if (tree.body[0] && tree.body[0].expression)
+        args = tree.body[0].expression.arguments;
+    else {
+        invalidFiles.push(file.path);
+    }
 
-        if(args) {
-            var literal = _.findWhere(args, { type: 'Literal'});
-            var objectExp = _.findWhere(args, { type: 'ObjectExpression'});
-            var properties = objectExp.properties;
-            var className = literal.value;
-            var spec = "", controllerType;
-            var generated = null;
+    if (args) {
+        var literal = _.findWhere(args, { type: 'Literal' });
+        var objectExp = _.findWhere(args, { type: 'ObjectExpression' });
+        var properties = objectExp.properties;
+        var className = literal.value;
+        var spec = "", controllerType;
+        var generated = null;
 
-            switch(specType) {
-                case "model":
-                    spec = generateModelSpec(config, className, properties);
-                    break;
-                case "store":
-                    spec = generateStoreSpec(config, className, properties);
-                    break;
-                case "controller":
-                case "viewmodel":
-                case "viewcontroller":
-                    var extend = _.find(properties, function(p) {
-                        return p.key.name === "extend";
-                    });
-                    if(extend && extend.value.value === "Ext.app.ViewController" && (specType === "viewcontroller" || specType === "controller")) {
-                        generated = generateViewControllerSpec(config, className, properties);
-                        spec = generated.spec;
-                        controllerType = extend.value.value;
-                    } else if (extend && extend.value.value === "Ext.app.ViewModel" && (specType === "viewmodel" || specType === "controller")) {
-                        spec = generateViewModelSpec(config, className, properties);
-                        controllerType = extend.value.value;
-                    } else {
-                        file.contents = new Buffer(JSON.stringify(invalidFiles));
-                        file.path = config.destDir + "\\trash.tmp";
-                        //cb(null, file);
-                        return file;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            var namespace = config.moduleName + "." + config.type + ".";
-            var newPath = parsePath(file.relative);
-
-            if (specType === "model" || specType === "store")
-                file.path = `${config.destDir}\\${className.replace(namespace, "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.${config.type.toLowerCase()}.spec.js`;
-            else {
-                if (controllerType === "Ext.app.ViewController") {
-                    file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewController", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewcontroller.spec.js`;
-                } else if (controllerType === "Ext.app.ViewModel") {
-                    file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewModel", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewmodel.spec.js`;
+        switch (specType) {
+            case "model":
+                spec = generateModelSpec(config, className, properties);
+                break;
+            case "store":
+                spec = generateStoreSpec(config, className, properties);
+                break;
+            case "controller":
+            case "viewmodel":
+            case "viewcontroller":
+                var extend = _.find(properties, function (p) {
+                    return p.key.name === "extend";
+                });
+                if (extend && extend.value.value === "Ext.app.ViewController" && (specType === "viewcontroller" || specType === "controller")) {
+                    generated = generateViewControllerSpec(config, className, properties);
+                    spec = generated.spec;
+                    controllerType = extend.value.value;
+                } else if (extend && extend.value.value === "Ext.app.ViewModel" && (specType === "viewmodel" || specType === "controller")) {
+                    spec = generateViewModelSpec(config, className, properties);
+                    controllerType = extend.value.value;
+                } else {
+                    file.contents = new Buffer(JSON.stringify(invalidFiles));
+                    file.path = config.destDir + "\\trash.tmp";
+                    //cb(null, file);
+                    return file;
                 }
-            }
-            file.contents = new Buffer(formatContent(config.formatContent, spec));
-            // send the updated file down the pipe
-            //cb(null, file);
-            return file;
+                break;
+            default:
+                break;
         }
+
+        var namespace = config.moduleName + "." + config.type + ".";
+        var newPath = parsePath(file.relative);
+
+        if (specType === "model" || specType === "store")
+            file.path = `${config.destDir}\\${className.replace(namespace, "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.${config.type.toLowerCase()}.spec.js`;
+        else {
+            if (controllerType === "Ext.app.ViewController") {
+                file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewController", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewcontroller.spec.js`;
+            } else if (controllerType === "Ext.app.ViewModel") {
+                file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewModel", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewmodel.spec.js`;
+            }
+        }
+        file.contents = new Buffer(formatContent(config.formatContent, spec));
+        // send the updated file down the pipe
+        //cb(null, file);
+        return file;
+    }
 }
 
 function parsePath(path) {
@@ -261,7 +261,7 @@ function generateStoreSpec(gulpConfig, className, properties) {
     var spec = `
         UnitTestEngine.testStore({
             name: '${className}',
-            alias: ${_.isUndefined(alias) ? null : JSON.stringify(alias) },
+            alias: ${_.isUndefined(alias) ? null : JSON.stringify(alias)},
             base: '${base}',
             dependencies: ${JSON.stringify(dependencies)},
             config: ${JSON.stringify(config)}
@@ -389,23 +389,23 @@ function getProxy(properties) {
     return proxy;
 }
 
-function replaceAll(haystack, needle, replacement)
-{
+function replaceAll(haystack, needle, replacement) {
     return haystack.split(needle).join(replacement);
 }
 
 function resolveDependencies(src, dest, dependency, formatCode) {
     var referenceClass = replaceAll(dependency, '"', '');
-    glob(src, function(err, files) {
+    glob(src, function (err, files) {
         var classes = [];
-        _.each(files, function(f) {
+        _.each(files, function (f) {
             var className = parseFile(f);
-            if(_.indexOf(classes, className) === -1)
+            if (_.indexOf(classes, className) === -1)
                 classes.push(className);
         });
 
         if (_.indexOf(classes, referenceClass) === -1) {
             var data = formatContent(formatCode, "Ext.define('" + referenceClass + "', {});");
+            ensureDirectoryExistence(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js");
             fs.writeFile(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js", data, 'utf-8', function (err) {
 
             });
@@ -416,7 +416,7 @@ function resolveDependencies(src, dest, dependency, formatCode) {
 function resolveDependenciesDeprecated(src, dest, dependency, formatCode) {
     var dir = src;
     var dep = replaceAll(dependency, '"', '');
-    
+
     var walkSync = function (dir, filelist, classlist) {
         var files = fs.readdirSync(dir);
         filelist = filelist || [];
@@ -426,9 +426,9 @@ function resolveDependenciesDeprecated(src, dest, dependency, formatCode) {
                 walkSync(Path.join(dir, file));
             }
             else {
-                filelist.push(file);  
+                filelist.push(file);
                 var className = parseFile(Path.join(src, file));
-                if(_.indexOf(classlist, className) === -1)
+                if (_.indexOf(classlist, className) === -1)
                     classlist.push(className);
             }
         });
@@ -442,7 +442,7 @@ function resolveDependenciesDeprecated(src, dest, dependency, formatCode) {
 
         });
     }
-   // console.log(classes);
+    // console.log(classes);
     // for(var i = 0; i < list.length; i++) {
     //     parseFile(Path.join(src, list[i]), (e) => {
     //         if (e !== dep) {
@@ -454,6 +454,24 @@ function resolveDependenciesDeprecated(src, dest, dependency, formatCode) {
     //         }
     //     });   
     // }
+}
+
+function ensureDirectoryExistence(filePath) {
+    var dirname = Path.dirname(filePath);
+    if (directoryExists(dirname)) {
+        return true;
+    }
+    ensureDirectoryExistence(dirname);
+    fs.mkdirSync(dirname);
+}
+
+function directoryExists(path) {
+    try {
+        return fs.statSync(path).isDirectory();
+    }
+    catch (err) {
+        return false;
+    }
 }
 
 function parseFile(filename) {
@@ -509,6 +527,7 @@ function writeDependencyFile(config, className, dependencies) {
                 var filename = d;
                 if (name.toString().toLowerCase() !== config.moduleName.toLowerCase()) {
                     var data = formatContent(config.formatContent, "Ext.define('" + d + "', {});");
+                    ensureDirectoryExistence(config.dependencyDestDir + "\\" + filename + ".js");
                     fs.writeFile(config.dependencyDestDir + "\\" + filename + ".js", data, 'utf-8', function (e) {
 
                     });
@@ -525,7 +544,7 @@ function writeDependencyFile(config, className, dependencies) {
 }
 
 function formatContent(format, data) {
-    return format ? beautify(data) : data; 
+    return format ? beautify(data) : data;
 }
 
 exports.generateSpecs = generateSpecs;
