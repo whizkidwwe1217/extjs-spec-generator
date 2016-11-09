@@ -70,7 +70,7 @@ Ext.define('UnitTestEngine', {
                 describe("config", function() {
                     it('should exists', function () {
                         if(isValid)
-                            should.exist(model, "Adjustment Note model might not have been initialized.");
+                            should.exist(model, modelName + " might not have been initialized.");
                         else
                             should.exist(model, "Model does not exists.");
                     });
