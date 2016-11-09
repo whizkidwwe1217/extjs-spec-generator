@@ -2,23 +2,24 @@ var esprima = require('esprima');
 var _ = require('underscore');
 var Path = require('path');
 var fs = require('fs');
+var endOfLine = require('os').EOL;
 var beautify = require('js-beautify').js_beautify;
 var glob = require('glob');
 
 function generateSpecs(file, config) {
     if (config.formatContent === undefined)
         config.formatContent = true;
-    var specType = config.type;
+    let specType = config.type;
     if (!specType || (specType !== 'model' && specType !== 'store' && specType != 'viewcontroller' && specType !== 'controller' && specType != 'viewmodel')) {
         file.contents = new Buffer("You can delete this file.");
         file.path = config.destDir + "\\trash.tmp";
         //cb(null, file);
         return file;
     }
-    var fileContent = file.contents.toString();
-    var tree = esprima.parse(fileContent);
-    var args = null;
-    var invalidFiles = [];
+    let fileContent = file.contents.toString();
+    let tree = esprima.parse(fileContent);
+    let args = null;
+    let invalidFiles = [];
     if (tree.body[0] && tree.body[0].expression)
         args = tree.body[0].expression.arguments;
     else {
@@ -26,65 +27,74 @@ function generateSpecs(file, config) {
     }
 
     if (args) {
-        var literal = _.findWhere(args, { type: 'Literal' });
-        var objectExp = _.findWhere(args, { type: 'ObjectExpression' });
-        var properties = objectExp.properties;
-        var className = literal.value;
-        var spec = "", controllerType;
-        var generated = null;
+        let className;
+        let literal = _.findWhere(args, { type: 'Literal' });
+        let objectExp = _.findWhere(args, { type: 'ObjectExpression' });
+        if (objectExp) {
+            let properties = objectExp.properties;
+            if (literal)
+                className = literal.value;
+            let spec = "", controllerType;
+            let generated = null;
 
-        switch (specType) {
-            case "model":
-                spec = generateModelSpec(config, className, properties);
-                break;
-            case "store":
-                spec = generateStoreSpec(config, className, properties);
-                break;
-            case "controller":
-            case "viewmodel":
-            case "viewcontroller":
-                var extend = _.find(properties, function (p) {
-                    return p.key.name === "extend";
-                });
-                if (extend && extend.value.value === "Ext.app.ViewController" && (specType === "viewcontroller" || specType === "controller")) {
-                    generated = generateViewControllerSpec(config, className, properties);
-                    spec = generated.spec;
-                    controllerType = extend.value.value;
-                } else if (extend && extend.value.value === "Ext.app.ViewModel" && (specType === "viewmodel" || specType === "controller")) {
-                    spec = generateViewModelSpec(config, className, properties);
-                    controllerType = extend.value.value;
-                } else {
-                    file.contents = new Buffer(JSON.stringify(invalidFiles));
-                    file.path = config.destDir + "\\trash.tmp";
-                    //cb(null, file);
-                    return file;
-                }
-                break;
-            default:
-                break;
-        }
-
-        var namespace = config.moduleName + "." + config.type + ".";
-        var newPath = parsePath(file.relative);
-
-        if (specType === "model" || specType === "store")
-            file.path = `${config.destDir}\\${className.replace(namespace, "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.${config.type.toLowerCase()}.spec.js`;
-        else {
-            if (controllerType === "Ext.app.ViewController") {
-                file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewController", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewcontroller.spec.js`;
-            } else if (controllerType === "Ext.app.ViewModel") {
-                file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewModel", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewmodel.spec.js`;
+            switch (specType) {
+                case "model":
+                    spec = generateModelSpec(config, className, properties);
+                    break;
+                case "store":
+                    spec = generateStoreSpec(config, className, properties);
+                    break;
+                case "controller":
+                case "viewmodel":
+                case "viewcontroller":
+                    let extend = _.find(properties, function (p) {
+                        return p.key.name === "extend";
+                    });
+                    if (extend && extend.value.value === "Ext.app.ViewController" && (specType === "viewcontroller" || specType === "controller")) {
+                        generated = generateViewControllerSpec(config, className, properties);
+                        spec = generated.spec;
+                        controllerType = extend.value.value;
+                    } else if (extend && extend.value.value === "Ext.app.ViewModel" && (specType === "viewmodel" || specType === "controller")) {
+                        spec = generateViewModelSpec(config, className, properties);
+                        controllerType = extend.value.value;
+                    } else {
+                        file.contents = new Buffer(JSON.stringify(invalidFiles));
+                        file.path = config.destDir + "\\trash.tmp";
+                        //cb(null, file);
+                        return file;
+                    }
+                    break;
+                default:
+                    break;
             }
+
+            let namespace = config.moduleName + "." + config.type + ".";
+            let newPath = parsePath(file.relative);
+
+            if (specType === "model" || specType === "store")
+                file.path = `${config.destDir}\\${className.replace(namespace, "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.${config.type.toLowerCase()}.spec.js`;
+            else {
+                if (controllerType === "Ext.app.ViewController") {
+                    file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewController", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewcontroller.spec.js`;
+                } else if (controllerType === "Ext.app.ViewModel") {
+                    file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewModel", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewmodel.spec.js`;
+                }
+            }
+            file.contents = new Buffer(formatContent(config.formatContent, spec));
+            // send the updated file down the pipe
+            //cb(null, file);
+            return file;
+        } else {
+            file.contents = new Buffer("");
+            file.path = config.destDir + "\\trash.tmp";
+            //cb(null, file);
+            return file;
         }
-        file.contents = new Buffer(formatContent(config.formatContent, spec));
-        // send the updated file down the pipe
-        //cb(null, file);
-        return file;
     }
 }
 
 function parsePath(path) {
-    var extname = Path.extname(path);
+    let extname = Path.extname(path);
     return {
         dirname: Path.dirname(path),
         basename: Path.basename(path, extname),
@@ -93,7 +103,7 @@ function parsePath(path) {
 }
 
 function generateModelSpec(config, className, properties) {
-    var base, idProperty, fields = [], dependencies = [], validators = [];
+    let base, idProperty, fields = [], dependencies = [], validators = [];
 
     _.each(properties, function (prop) {
         if (prop.type === "Property" && prop.key.type === "Identifier") {
@@ -113,7 +123,7 @@ function generateModelSpec(config, className, properties) {
                     break;
                 case "fields":
                     _.each(prop.value.elements, function (e) {
-                        var name, type, allowNull = false;
+                        let name, type, allowNull = false;
                         _.each(e.properties, function (p) {
                             switch (p.key.name) {
                                 case "name":
@@ -138,7 +148,7 @@ function generateModelSpec(config, className, properties) {
                     break;
                 case "validators":
                     _.each(prop.value.elements, function (e) {
-                        var field, type;
+                        let field, type;
                         _.each(e.properties, function (p) {
                             switch (p.key.name) {
                                 case "field":
@@ -179,7 +189,7 @@ function generateModelSpec(config, className, properties) {
 }
 
 function generateStoreSpec(gulpConfig, className, properties) {
-    var base, alias, fields = [], dependencies = [], validators = [], config = {};
+    let base, alias, fields = [], dependencies = [], validators = [], config = {};
 
     _.each(properties, function (prop) {
         if (prop.type === "Property" && prop.key.type === "Identifier") {
@@ -219,12 +229,12 @@ function generateStoreSpec(gulpConfig, className, properties) {
                             return b.type === "ExpressionStatement" && b.expression.type === "CallExpression";
                         });
                         if (!(_.isNull(stmt) || _.isUndefined(stmt))) {
-                            var cfg = _.find(stmt, function (s) {
+                            let cfg = _.find(stmt, function (s) {
                                 return s.type === "CallExpression";
                             });
                             if (!(_.isNull(cfg) || _.isUndefined(cfg))) {
-                                var args = cfg.arguments;
-                                var props = args[0].elements[0].arguments[0].properties;
+                                let args = cfg.arguments;
+                                let props = args[0].elements[0].arguments[0].properties;
                                 _.each(props, function (p) {
                                     switch (p.key.name) {
                                         case "model":
@@ -258,7 +268,7 @@ function generateStoreSpec(gulpConfig, className, properties) {
             }
         }
     });
-    var spec = `
+    let spec = `
         UnitTestEngine.testStore({
             name: '${className}',
             alias: ${_.isUndefined(alias) ? null : JSON.stringify(alias)},
@@ -274,7 +284,7 @@ function generateStoreSpec(gulpConfig, className, properties) {
 }
 
 function generateViewModelSpec(config, className, properties) {
-    var base, alias, dependencies = [];
+    let base, alias, dependencies = [];
     _.each(properties, function (prop) {
         if (prop.type === "Property" && prop.key.type === "Identifier") {
             switch (prop.key.name) {
@@ -290,7 +300,7 @@ function generateViewModelSpec(config, className, properties) {
         }
     });
 
-    var spec = `
+    let spec = `
         UnitTestEngine.testViewModel({
             name: '${className}',
             alias: '${alias}',
@@ -305,7 +315,7 @@ function generateViewModelSpec(config, className, properties) {
 }
 
 function generateViewControllerSpec(config, className, properties) {
-    var base, alias, dependencies = [];
+    let base, alias, dependencies = [];
     _.each(properties, function (prop) {
         if (prop.type === "Property" && prop.key.type === "Identifier") {
             switch (prop.key.name) {
@@ -328,7 +338,7 @@ function generateViewControllerSpec(config, className, properties) {
         }
     });
 
-    var spec = `
+    let spec = `
         UnitTestEngine.testViewController({
             name: '${className}',
             alias: '${alias}',
@@ -343,15 +353,15 @@ function generateViewControllerSpec(config, className, properties) {
 }
 
 function getProxy(properties) {
-    var proxy = {};
+    let proxy = {};
     _.each(properties, function (pr) {
         switch (pr.key.name) {
             case "type":
                 proxy.type = pr.value.value;
                 break;
             case "extraParams":
-                var extraParams = pr.value.properties;
-                var ep = [];
+                let extraParams = pr.value.properties;
+                let ep = [];
                 _.each(extraParams, function (prop) {
                     ep.push({
                         name: prop.key.name,
@@ -361,7 +371,7 @@ function getProxy(properties) {
                 proxy.extraParams = ep;
                 break;
             case "api":
-                var api = {};
+                let api = {};
                 _.each(pr.value.properties, function (a) {
                     switch (a.key.name) {
                         case "read":
@@ -394,17 +404,17 @@ function replaceAll(haystack, needle, replacement) {
 }
 
 function resolveDependencies(src, dest, dependency, formatCode) {
-    var referenceClass = replaceAll(dependency, '"', '');
+    let referenceClass = replaceAll(dependency, '"', '');
     glob(src, function (err, files) {
-        var classes = [];
+        let classes = [];
         _.each(files, function (f) {
-            var className = parseFile(f);
+            let className = parseFile(f);
             if (_.indexOf(classes, className) === -1)
                 classes.push(className);
         });
 
         if (_.indexOf(classes, referenceClass) === -1) {
-            var data = formatContent(formatCode, "Ext.define('" + referenceClass + "', {});");
+            let data = formatContent(formatCode, "Ext.define('" + referenceClass + "', {});");
             ensureDirectoryExistence(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js");
             fs.writeFile(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js", data, 'utf-8', function (err) {
 
@@ -414,11 +424,11 @@ function resolveDependencies(src, dest, dependency, formatCode) {
 }
 
 function resolveDependenciesDeprecated(src, dest, dependency, formatCode) {
-    var dir = src;
-    var dep = replaceAll(dependency, '"', '');
+    let dir = src;
+    let dep = replaceAll(dependency, '"', '');
 
-    var walkSync = function (dir, filelist, classlist) {
-        var files = fs.readdirSync(dir);
+    let walkSync = function (dir, filelist, classlist) {
+        let files = fs.readdirSync(dir);
         filelist = filelist || [];
         classlist = classlist || [];
         files.forEach(function (file) {
@@ -427,17 +437,17 @@ function resolveDependenciesDeprecated(src, dest, dependency, formatCode) {
             }
             else {
                 filelist.push(file);
-                var className = parseFile(Path.join(src, file));
+                let className = parseFile(Path.join(src, file));
                 if (_.indexOf(classlist, className) === -1)
                     classlist.push(className);
             }
         });
     };
 
-    var sourceFiles = [], classes = [];
+    let sourceFiles = [], classes = [];
     walkSync(dir, sourceFiles, classes);
     if (_.indexOf(classes, dep) === -1) {
-        var data = formatContent(formatCode, "Ext.define('" + dep + "', {});");
+        let data = formatContent(formatCode, "Ext.define('" + dep + "', {});");
         fs.writeFile(replaceAll(dest, "/", "\\") + "\\" + dep + ".js", data, 'utf-8', function (err) {
 
         });
@@ -457,7 +467,7 @@ function resolveDependenciesDeprecated(src, dest, dependency, formatCode) {
 }
 
 function ensureDirectoryExistence(filePath) {
-    var dirname = Path.dirname(filePath);
+    let dirname = Path.dirname(filePath);
     if (directoryExists(dirname)) {
         return true;
     }
@@ -475,28 +485,36 @@ function directoryExists(path) {
 }
 
 function parseFile(filename) {
-    var data = fs.readFileSync(filename, 'utf-8');
-    var tree = esprima.parse(data);
-    return getClassName(tree);
+    let data = fs.readFileSync(filename, 'utf-8');
+    let tree;
+    try {
+        let tree = esprima.parse(data);
+        return getClassName(tree);
+    } catch(error) {
+        fs.appendFile('logs.log', error + endOfLine + "       -> " + filename + endOfLine, function (err) {
+        if (err) throw err;
+            console.log('Errors encountered during generation. Please see log file.');
+        });
+    }
+    return undefined;
 }
 
 function getClassName(tree) {
-    var className;
-    var args;
+    let className;
+    let args;
     if (tree.body[0] && tree.body[0].expression)
         args = tree.body[0].expression.arguments;
 
     if (args) {
-        var literal = _.findWhere(args, { type: 'Literal' });
-        var objectExp = _.findWhere(args, { type: 'ObjectExpression' });
-        var properties = objectExp.properties;
-        className = literal.value;
+        let literal = _.findWhere(args, { type: 'Literal' });
+        if(literal)
+            className = literal.value;
     }
     return className;
 }
 
 function traversePath(dir) {
-    var walkSync = function (dir, filelist) {
+    let walkSync = function (dir, filelist) {
         files = fs.readdirSync(dir);
         filelist = filelist || [];
         files.forEach(function (file) {
@@ -510,7 +528,7 @@ function traversePath(dir) {
         return filelist;
     };
 
-    var list = [];
+    let list = [];
     walkSync(dir, list);
     return list;
 }
@@ -518,15 +536,15 @@ function traversePath(dir) {
 function writeDependencyFile(config, className, dependencies) {
     if (config.moduleName) {
         _.each(dependencies, function (d) {
-            var s = d.split(".", 1);
-            var name = "";
+            let s = d.split(".", 1);
+            let name = "";
             if (s.length > 0) {
                 name = s;
             }
             if (name != "Ext") {
-                var filename = d;
+                let filename = d;
                 if (name.toString().toLowerCase() !== config.moduleName.toLowerCase()) {
-                    var data = formatContent(config.formatContent, "Ext.define('" + d + "', {});");
+                    let data = formatContent(config.formatContent, "Ext.define('" + d + "', {});");
                     ensureDirectoryExistence(config.dependencyDestDir + "\\" + filename + ".js");
                     fs.writeFile(config.dependencyDestDir + "\\" + filename + ".js", data, 'utf-8', function (e) {
 
