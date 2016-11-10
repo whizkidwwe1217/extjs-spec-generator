@@ -5,8 +5,10 @@ var fs = require('fs');
 var endOfLine = require('os').EOL;
 var beautify = require('js-beautify').js_beautify;
 var glob = require('glob');
+var logs = [];
 
 function generateSpecs(file, config) {
+    log("[" + colors().grey(config.type) + "] " + colors().green("Generating specs for ") + colors().magenta(file.path));
     if (config.formatContent === undefined)
         config.formatContent = true;
     let specType = config.type;
@@ -17,7 +19,16 @@ function generateSpecs(file, config) {
         return file;
     }
     let fileContent = file.contents.toString();
-    let tree = esprima.parse(fileContent);
+    let tree;
+    try {
+        tree = esprima.parse(fileContent);
+    } catch(error) {
+        generateLogs(error, file.path);
+        file.contents = new Buffer("");
+        file.path = config.destDir + "\\trash.tmp";
+        //cb(null, file);
+        return file;
+    }
     let args = null;
     let invalidFiles = [];
     if (tree.body[0] && tree.body[0].expression)
@@ -81,6 +92,9 @@ function generateSpecs(file, config) {
                 }
             }
             file.contents = new Buffer(formatContent(config.formatContent, spec));
+            if(logs.length > 0) {
+                appendLog("logs.log");
+            }
             // send the updated file down the pipe
             //cb(null, file);
             return file;
@@ -403,26 +417,6 @@ function replaceAll(haystack, needle, replacement) {
     return haystack.split(needle).join(replacement);
 }
 
-function resolveDependencies(src, dest, dependency, formatCode) {
-    let referenceClass = replaceAll(dependency, '"', '');
-    glob(src, function (err, files) {
-        let classes = [];
-        _.each(files, function (f) {
-            let className = parseFile(f);
-            if (_.indexOf(classes, className) === -1)
-                classes.push(className);
-        });
-
-        if (_.indexOf(classes, referenceClass) === -1) {
-            let data = formatContent(formatCode, "Ext.define('" + referenceClass + "', {});");
-            ensureDirectoryExistence(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js");
-            fs.writeFile(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js", data, 'utf-8', function (err) {
-
-            });
-        }
-    });
-}
-
 function resolveDependenciesDeprecated(src, dest, dependency, formatCode) {
     let dir = src;
     let dep = replaceAll(dependency, '"', '');
@@ -484,19 +478,73 @@ function directoryExists(path) {
     }
 }
 
-function parseFile(filename) {
-    let data = fs.readFileSync(filename, 'utf-8');
-    let tree;
+function fileExists(filename) {
     try {
-        let tree = esprima.parse(data);
-        return getClassName(tree);
-    } catch(error) {
-        fs.appendFile('logs.log', error + endOfLine + "       -> " + filename + endOfLine, function (err) {
-        if (err) throw err;
-            console.log('Errors encountered during generation. Please see log file.');
-        });
+        return fs.statSync(filename).isFile();
+    }
+    catch (err) {
+        return false;
+    }
+}
+
+function parseFile(filename) {
+    if (fileExists(filename)) {
+        let data = fs.readFileSync(filename, 'utf-8');
+        let tree;
+        try {
+            try {
+                let tree = esprima.parse(data);
+                return getClassName(tree);
+            } catch(err) {
+                generateLogs(err, filename);
+            }            
+        } catch (error) {
+            generateLogs(error, filename);
+            //generateLogs('logs.log', error + endOfLine + "       -> " + filename + endOfLine);
+        }
     }
     return undefined;
+}
+
+var util = require('util');
+
+function colorize (color, text) {
+  const codes = util.inspect.colors[color]
+  return `\x1b[${codes[0]}m${text}\x1b[${codes[1]}m`
+}
+
+function colors () {
+  let returnValue = {}
+  Object.keys(util.inspect.colors).forEach((color) => {
+    returnValue[color] = (text) => colorize(color, text)
+  })
+  return returnValue
+}
+
+function generateLogs(data, filename) {
+    if(!_.findWhere(logs, { file: filename})) {
+        logs.push({
+            file: filename,
+            data: data
+        });
+    }
+}
+
+function appendLog(filename) {
+    let msg = "";
+    _.each(logs, l => {
+        console.error(colors().red("Found error while processing ") + colors().yellow(l.file) + ". Please see " + colors().green("logs.log"));
+        msg += l.data + endOfLine + "        -> " + l.file + endOfLine;
+    });
+    fs.appendFile(filename, msg, function (err) {
+        if (err) throw err;
+        //console.error(colors().red('    > Errors encountered during generation. Please see log file.' + err) + " " + colors().green(filename));
+    });
+    logs = [];
+}
+
+function log(msg) {
+    console.log(msg); 
 }
 
 function getClassName(tree) {
@@ -507,7 +555,7 @@ function getClassName(tree) {
 
     if (args) {
         let literal = _.findWhere(args, { type: 'Literal' });
-        if(literal)
+        if (literal)
             className = literal.value;
     }
     return className;
@@ -559,6 +607,26 @@ function writeDependencyFile(config, className, dependencies) {
             }
         });
     }
+}
+
+function resolveDependencies(src, dest, dependency, formatCode) {
+    let referenceClass = replaceAll(dependency, '"', '');
+    glob(src, function (err, files) {
+        let classes = [];
+        _.each(files, function (f) {
+            let className = parseFile(f);
+            if (_.indexOf(classes, className) === -1)
+                classes.push(className);
+        });
+
+        if (_.indexOf(classes, referenceClass) === -1) {
+            let data = formatContent(formatCode, "Ext.define('" + referenceClass + "', {});");
+            ensureDirectoryExistence(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js");
+            fs.writeFile(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js", data, 'utf-8', function (err) {
+
+            });
+        }
+    });
 }
 
 function formatContent(format, data) {
