@@ -22,7 +22,7 @@ function generateSpecs(file, config) {
     let tree;
     try {
         tree = esprima.parse(fileContent);
-    } catch(error) {
+    } catch (error) {
         generateLogs(error, file.path);
         file.contents = new Buffer("");
         file.path = config.destDir + "\\trash.tmp";
@@ -92,7 +92,7 @@ function generateSpecs(file, config) {
                 }
             }
             file.contents = new Buffer(formatContent(config.formatContent, spec));
-            if(logs.length > 0) {
+            if (logs.length > 0) {
                 appendLog("logs.log");
             }
             // send the updated file down the pipe
@@ -248,31 +248,39 @@ function generateStoreSpec(gulpConfig, className, properties) {
                             });
                             if (!(_.isNull(cfg) || _.isUndefined(cfg))) {
                                 let args = cfg.arguments;
-                                let props = args[0].elements[0].arguments[0].properties;
-                                _.each(props, function (p) {
-                                    switch (p.key.name) {
-                                        case "model":
-                                            config.model = p.value.value;
-                                            break;
-                                        case "storeId":
-                                            config.storeId = p.value.value;
-                                            break;
-                                        case "pageSize":
-                                            config.pageSize = p.value.value;
-                                            break;
-                                        case "remoteFilter":
-                                            config.remoteFilter = p.value.value;
-                                            break;
-                                        case "remoteSort":
-                                            config.remoteSort = p.value.value;
-                                            break;
-                                        case "proxy":
-                                            config.proxy = getProxy(p.value.properties);
-                                            break;
-                                        default:
-                                            break;
+                                if (args.length > 0) {
+                                    if (args.elements && args.elements.length > 0) {
+                                        if (args.elements[0].arguments && args.elements[0].arguments.length > 0) {
+                                            if (args.elements[0].arguments[0].properties) {
+                                                let props = args[0].elements[0].arguments[0].properties;
+                                                _.each(props, function (p) {
+                                                    switch (p.key.name) {
+                                                        case "model":
+                                                            config.model = p.value.value;
+                                                            break;
+                                                        case "storeId":
+                                                            config.storeId = p.value.value;
+                                                            break;
+                                                        case "pageSize":
+                                                            config.pageSize = p.value.value;
+                                                            break;
+                                                        case "remoteFilter":
+                                                            config.remoteFilter = p.value.value;
+                                                            break;
+                                                        case "remoteSort":
+                                                            config.remoteSort = p.value.value;
+                                                            break;
+                                                        case "proxy":
+                                                            config.proxy = getProxy(p.value.properties);
+                                                            break;
+                                                        default:
+                                                            break;
+                                                    }
+                                                });
+                                            }
+                                        }
                                     }
-                                });
+                                }
                             }
                         }
                     }
@@ -495,9 +503,9 @@ function parseFile(filename) {
             try {
                 let tree = esprima.parse(data);
                 return getClassName(tree);
-            } catch(err) {
+            } catch (err) {
                 generateLogs(err, filename);
-            }            
+            }
         } catch (error) {
             generateLogs(error, filename);
             //generateLogs('logs.log', error + endOfLine + "       -> " + filename + endOfLine);
@@ -508,21 +516,21 @@ function parseFile(filename) {
 
 var util = require('util');
 
-function colorize (color, text) {
-  const codes = util.inspect.colors[color]
-  return `\x1b[${codes[0]}m${text}\x1b[${codes[1]}m`
+function colorize(color, text) {
+    const codes = util.inspect.colors[color]
+    return `\x1b[${codes[0]}m${text}\x1b[${codes[1]}m`
 }
 
-function colors () {
-  let returnValue = {}
-  Object.keys(util.inspect.colors).forEach((color) => {
-    returnValue[color] = (text) => colorize(color, text)
-  })
-  return returnValue
+function colors() {
+    let returnValue = {}
+    Object.keys(util.inspect.colors).forEach((color) => {
+        returnValue[color] = (text) => colorize(color, text)
+    })
+    return returnValue
 }
 
 function generateLogs(data, filename) {
-    if(!_.findWhere(logs, { file: filename})) {
+    if (!_.findWhere(logs, { file: filename })) {
         logs.push({
             file: filename,
             data: data
@@ -544,7 +552,7 @@ function appendLog(filename) {
 }
 
 function log(msg) {
-    console.log(msg); 
+    console.log(msg);
 }
 
 function getClassName(tree) {
