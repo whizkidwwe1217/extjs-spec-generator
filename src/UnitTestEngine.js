@@ -247,27 +247,29 @@ Ext.define('UnitTestEngine', {
                                 });
                                 describe('api', function() {
                                     var expectedApi = config.config.proxy.api;
-                                    var api = store.proxy.api;
-                                    it('should have the correct api URIs', function() {
-                                        should.exist(api);
-                                    });
+                                    if(store) {
+                                        var api = store.proxy.api;
+                                        it('should have the correct api URIs', function() {
+                                            should.exist(api);
+                                        });
 
-                                    if(expectedApi.create)
-                                        it('"create" URI should be "'.concat(expectedApi.create).concat('"'), function() {
-                                            api.create.should.be.equal(expectedApi.create);
-                                        });
-                                    if(expectedApi.read)
-                                        it('"read" URI should be "'.concat(expectedApi.read).concat('"'), function() {
-                                            api.read.should.be.equal(expectedApi.read);
-                                        });
-                                    if(expectedApi.update)
-                                        it('"update" URI should be "'.concat(expectedApi.update).concat('"'), function() {
-                                            api.update.should.be.equal(expectedApi.update);
-                                        });
-                                    if(expectedApi.destroy)
-                                        it('"destroy" URI should be "'.concat(expectedApi.destroy).concat('"'), function() {
-                                            api.destroy.should.be.equal(expectedApi.destroy);
-                                        });
+                                        if(expectedApi.create)
+                                            it('"create" URI should be "'.concat(expectedApi.create).concat('"'), function() {
+                                                api.create.should.be.equal(expectedApi.create);
+                                            });
+                                        if(expectedApi.read)
+                                            it('"read" URI should be "'.concat(expectedApi.read).concat('"'), function() {
+                                                api.read.should.be.equal(expectedApi.read);
+                                            });
+                                        if(expectedApi.update)
+                                            it('"update" URI should be "'.concat(expectedApi.update).concat('"'), function() {
+                                                api.update.should.be.equal(expectedApi.update);
+                                            });
+                                        if(expectedApi.destroy)
+                                            it('"destroy" URI should be "'.concat(expectedApi.destroy).concat('"'), function() {
+                                                api.destroy.should.be.equal(expectedApi.destroy);
+                                            });
+                                    }
                                 });
                             });
                         }
