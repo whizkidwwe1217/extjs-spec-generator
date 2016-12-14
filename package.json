@@ -1,6 +1,6 @@
 {
   "name": "extjs-spec-generator",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "Generates unit test specs from ExtJs classes",
   "scripts": {
     "test": "karma start config/karma.conf.js",
@@ -49,5 +49,6 @@
     "underscore": "^1.8.3",
     "vinyl": "^2.0.0",
     "watchify": "^3.7.0"
-  }
+  },
+  "engine": "node >= 6.8.1"
 }
