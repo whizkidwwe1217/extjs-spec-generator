@@ -1,10 +1,10 @@
 {
   "name": "extjs-spec-generator",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "Generates unit test specs from ExtJs classes",
   "scripts": {
     "test": "karma start config/karma.conf.js",
-    "start": "node src/main.js"
+    "start": "node src/sample.js"
   },
   "readme": "README.md",
   "author": "Wendell Wayne H. Estrada",

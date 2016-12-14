@@ -249,9 +249,9 @@ function generateStoreSpec(gulpConfig, className, properties) {
                             if (!(_.isNull(cfg) || _.isUndefined(cfg))) {
                                 let args = cfg.arguments;
                                 if (args.length > 0) {
-                                    if (args.elements && args.elements.length > 0) {
-                                        if (args.elements[0].arguments && args.elements[0].arguments.length > 0) {
-                                            if (args.elements[0].arguments[0].properties) {
+                                    if (args[0].elements && args[0].elements.length > 0) {
+                                        if (args[0].elements[0].arguments && args[0].elements[0].arguments.length > 0) {
+                                            if (args[0].elements[0].arguments[0].properties) {
                                                 let props = args[0].elements[0].arguments[0].properties;
                                                 _.each(props, function (p) {
                                                     switch (p.key.name) {
