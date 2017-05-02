@@ -144,6 +144,8 @@ Ext.define('UnitTestEngine', {
             obj = this.isValidExtObject(name);
             controller = obj.obj;
             isValidExt = obj.valid; 
+            if(!controller)
+                return;
             config = controller.config;
             search = config.searchConfig;
             binding = config.binding;
