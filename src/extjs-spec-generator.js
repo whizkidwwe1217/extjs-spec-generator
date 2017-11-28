@@ -66,7 +66,8 @@ function generateSpecs(file, config) {
                         spec = generated.spec;
                         controllerType = extend.value.value;
                     } else if (extend && (extend.value.value === "Ext.app.ViewModel" || extend.value.value.indexOf("ViewModel") !== -1) && (specType === "viewmodel" || specType === "controller")) {
-                        spec = generateViewModelSpec(config, className, properties);
+                        generated = generateViewModelSpec(config, className, properties);
+                        spec = generated.spec;
                         controllerType = extend.value.value;
                     } else {
                         file.contents = new Buffer(JSON.stringify(invalidFiles));
@@ -316,6 +317,13 @@ function generateViewModelSpec(config, className, properties) {
                 case "alias":
                     alias = prop.value.value;
                     break;
+                case "requires":
+                    if (prop.value) {
+                        _.each(prop.value.elements, function (e) {
+                            if (e) dependencies.push(e.value);
+                        });
+                    }
+                    break;
                 default:
                     break;
             }
@@ -333,7 +341,7 @@ function generateViewModelSpec(config, className, properties) {
 
     writeDependencyFile(config, className, dependencies);
 
-    return spec;
+    return { spec: spec, alias: alias, base: base, dependencies: dependencies };
 }
 
 function generateViewControllerSpec(config, className, properties) {
