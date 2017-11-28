@@ -1,6 +1,6 @@
 {
   "name": "extjs-spec-generator",
-  "version": "1.2.12",
+  "version": "1.2.13",
   "description": "Generates unit test specs from ExtJs classes",
   "scripts": {
     "test": "karma start config/karma.conf.js",

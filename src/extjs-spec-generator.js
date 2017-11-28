@@ -9,6 +9,7 @@ var logs = [];
 
 function generateSpecs(file, config) {
     log("[" + colors().grey(config.type) + "] " + colors().green("Generating specs for ") + colors().magenta(file.path));
+    
     if (config.formatContent === undefined)
         config.formatContent = true;
     let specType = config.type;
@@ -50,10 +51,10 @@ function generateSpecs(file, config) {
 
             switch (specType) {
                 case "model":
-                    spec = generateModelSpec(config, className, properties);
+                    spec = generateModelSpec(config, className, properties, config.aliasMappings);
                     break;
                 case "store":
-                    spec = generateStoreSpec(config, className, properties);
+                    spec = generateStoreSpec(config, className, properties, config.aliasMappings);
                     break;
                 case "controller":
                 case "viewmodel":
@@ -62,11 +63,11 @@ function generateSpecs(file, config) {
                         return p.key.name === "extend";
                     });
                     if (extend && (extend.value.value === "Ext.app.ViewController" || extend.value.value.indexOf("ViewController") !== -1) && (specType === "viewcontroller" || specType === "controller")) {
-                        generated = generateViewControllerSpec(config, className, properties);
+                        generated = generateViewControllerSpec(config, className, properties, config.aliasMappings);
                         spec = generated.spec;
                         controllerType = extend.value.value;
                     } else if (extend && (extend.value.value === "Ext.app.ViewModel" || extend.value.value.indexOf("ViewModel") !== -1) && (specType === "viewmodel" || specType === "controller")) {
-                        generated = generateViewModelSpec(config, className, properties);
+                        generated = generateViewModelSpec(config, className, properties, config.aliasMappings);
                         spec = generated.spec;
                         controllerType = extend.value.value;
                     } else {
@@ -108,6 +109,26 @@ function generateSpecs(file, config) {
     }
 }
 
+function extractNamespaceClassAndType(moduleName, namespace, specType, controllerType, className) {
+    let name = '';
+    if (specType === "model" || specType === "store")
+        name = `${className.replace(namespace, "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}`;
+    else {
+        if (controllerType === "Ext.app.ViewController" || controllerType.indexOf("ViewController") !== -1) {
+            name = `${className.replace(moduleName + ".view.", "").replace("ViewController", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}`;
+        } else if (controllerType === "Ext.app.ViewModel" || controllerType.indexOf("ViewModel") !== -1) {
+            name = `${className.replace(moduleName + ".view.", "").replace("ViewModel", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}`;
+        }
+    }
+
+    result = {
+        namespace: namespace,
+        type: specType,
+        name: `'${name}'`,
+        alias: `'${type.toLowerCase()}.${name.toLowerCase()}'`
+    }
+}
+
 function parsePath(path) {
     let extname = Path.extname(path);
     return {
@@ -117,7 +138,7 @@ function parsePath(path) {
     };
 }
 
-function generateModelSpec(config, className, properties) {
+function generateModelSpec(config, className, properties, aliasMappings) {
     let base, idProperty, fields = [], dependencies = [], validators = [];
 
     _.each(properties, function (prop) {
@@ -198,12 +219,13 @@ function generateModelSpec(config, className, properties) {
     });
     `;
 
-    writeDependencyFile(config, className, dependencies);
+    let extras = { type: 'model', extend: base, aliasMappings: aliasMappings };
+    writeDependencyFile(config, className, dependencies, extras);
 
     return spec;
 }
 
-function generateStoreSpec(gulpConfig, className, properties) {
+function generateStoreSpec(gulpConfig, className, properties, aliasMappings) {
     let base, alias, fields = [], dependencies = [], validators = [], config = {};
 
     _.each(properties, function (prop) {
@@ -301,12 +323,13 @@ function generateStoreSpec(gulpConfig, className, properties) {
         });
     `;
 
-    writeDependencyFile(gulpConfig, className, dependencies);
+    let extras = { type: 'store', extend: base, aliasMappings: aliasMappings };
+    writeDependencyFile(gulpConfig, className, dependencies, extras);
 
     return spec;
 }
 
-function generateViewModelSpec(config, className, properties) {
+function generateViewModelSpec(config, className, properties, aliasMappings) {
     let base, alias, dependencies = [];
     _.each(properties, function (prop) {
         if (prop.type === "Property" && prop.key.type === "Identifier") {
@@ -339,12 +362,13 @@ function generateViewModelSpec(config, className, properties) {
         });
     `;
 
-    writeDependencyFile(config, className, dependencies);
+    let extras = { type: 'viewmodel', extend: base, aliasMappings: aliasMappings };
+    writeDependencyFile(config, className, dependencies, extras);
 
     return { spec: spec, alias: alias, base: base, dependencies: dependencies };
 }
 
-function generateViewControllerSpec(config, className, properties) {
+function generateViewControllerSpec(config, className, properties, aliasMappings) {
     let base, alias, dependencies = [];
     _.each(properties, function (prop) {
         if (prop.type === "Property" && prop.key.type === "Identifier") {
@@ -377,7 +401,8 @@ function generateViewControllerSpec(config, className, properties) {
         });
     `;
 
-    writeDependencyFile(config, className, dependencies);
+    let extras = { type: 'viewcontroller', extend: base, aliasMappings: aliasMappings };
+    writeDependencyFile(config, className, dependencies, extras);
 
     return { spec: spec, alias: alias, base: base, dependencies: dependencies };
 }
@@ -597,7 +622,7 @@ function traversePath(dir) {
     return list;
 }
 
-function writeDependencyFile(config, className, dependencies) {
+function writeDependencyFile(config, className, dependencies, extras) {
     if (config.moduleName) {
         _.each(dependencies, function (d) {
             let s = d.split(".", 1);
@@ -608,7 +633,19 @@ function writeDependencyFile(config, className, dependencies) {
             if (name != "Ext") {
                 let filename = d;
                 if (name.toString().toLowerCase() !== config.moduleName.toLowerCase()) {
-                    let data = formatContent(config.formatContent, "Ext.define('" + d + "', {});");
+                    log("[" + colors().grey("mockfile") + "] " + colors().green("Generating mock file for ") + colors().blue(d) + " to " + colors().magenta(config.dependencyDestDir + "\\" + filename + ".js"));
+                    
+                    let data = formatContent(config.formatContent, `Ext.define('${d}', {});`);
+                    
+                    if(extras) {
+                        let metadata = getClassMetadata(d, extras.type, true, extras.aliasMappings);
+                        let body = {
+                            extend: metadata.extend,
+                            alias: metadata.alias
+                        };
+                        data = formatContent(config.formatContent, `Ext.define('${d}', ${JSON.stringify(body)});`);
+                    }
+
                     ensureDirectoryExistence(config.dependencyDestDir + "\\" + filename + ".js");
                     fs.writeFile(config.dependencyDestDir + "\\" + filename + ".js", data, 'utf-8', function (e) {
 
@@ -616,7 +653,7 @@ function writeDependencyFile(config, className, dependencies) {
                 } else {
                     if (config.resolveModuleDependencies === true) {
                         if (config.dependencyDir, config.formatContent) {
-                            resolveDependencies(config.dependencyDir, config.dependencyDestDir, d);
+                            resolveDependencies(config.dependencyDir, config.dependencyDestDir, d, undefined, extras);
                         }
                     }
                 }
@@ -625,7 +662,106 @@ function writeDependencyFile(config, className, dependencies) {
     }
 }
 
-function resolveDependencies(src, dest, dependency, formatCode) {
+function getDefaultAliasMappings() {
+    let aliasMappings = [
+        { name: 'AccountsPayable', prefix: 'ap' },
+        { name: 'AccountsReceivable', prefix: 'ar' },
+        { name: 'CardFueling', prefix: 'cf' },
+        { name: 'CashManagement', prefix: 'cm' },
+        { name: 'CreditCardRecon', prefix: 'cc' },
+        { name: 'CRM', prefix: 'crm' },
+        { name: 'Dashboard', prefix: 'db' },
+        { name: 'EnergyTrac', prefix: 'et' },
+        { name: 'EntityManagement', prefix: 'em' },
+        { name: 'FinancialReportDesigner', prefix: 'frd' },
+        { name: 'GeneralLedger', prefix: 'gl' },
+        { name: 'GlobalComponentEngine', prefix: 'frm' },
+        { name: 'Grain', prefix: 'gr' },
+        { name: 'HelpDesk', prefix: 'hd' },
+        { name: 'Integration', prefix: 'ip' },
+        { name: 'Inventory', prefix: 'ic' },
+        { name: 'Logistics', prefix: 'lg' },
+        { name: 'Manufacturing', prefix: 'mf' },
+        { name: 'MeterBilling', prefix: 'mb' },
+        { name: 'NoteReceivable', prefix: 'nr' },
+        { name: 'Patronage', prefix: 'pat' },
+        { name: 'Payroll', prefix: 'pr' },
+        { name: 'Quality', prefix: 'qm' },
+        { name: 'Reporting', prefix: 'sr' },
+        { name: 'RiskManagement', prefix: 'rk' },
+        { name: 'ServicePack', prefix: 'sp' },
+        { name: 'Store', prefix: 'st' },
+        { name: 'RiskManagement', prefix: 'rm' },
+        { name: 'SystemManager', prefix: 'sm' },
+        { name: 'TankManagemet', prefix: 'tm' },
+        { name: 'TaxForm', prefix: 'tf' },
+        { name: 'Transports', prefix: 'tr' },
+        { name: 'VendorRebates', prefix: 'vr' },
+        { name: 'Warehouse', prefix: 'wh' }
+    ];
+    return aliasMappings;
+}
+
+function getClassMetadata(namespace, type, resolveType, aliasMappings) {
+    if(!aliasMappings)
+        aliasMappings = getDefaultAliasMappings();
+    let extend = "Ext.Base";
+    if(resolveType) {
+        if(namespace.indexOf(".store.") !== -1) {
+            type = "store";
+            extend = namespace.indexOf("Buffered") !== -1 ? "Ext.data.BufferedStore" : "Ext.data.Store";
+        }
+        else if (namespace.indexOf(".model.") !== -1) {
+            type = "model";
+            extend = "iRely.BaseEntity";
+        }
+        else if (namespace.indexOf(".view.") && namespace.indexOf("ViewController") !== -1) {
+            type = "viewcontroller";
+            extend = "Ext.app.ViewController";
+        }
+        else if (namespace.indexOf(".view.") && namespace.indexOf("ViewModel") !== -1) {
+            type = "viewmodel";
+            extend = "Ext.app.ViewModel";
+        }
+    }
+
+    let tStart = -1;
+    let tEnd = type.length;
+
+    switch (type) {
+        case "store":
+        case "model":
+            tStart = namespace.indexOf("." + type + ".") + 2;
+            tEnd = tStart + tEnd;
+            break;
+        case "viewmodel":
+        case "viewcontroller":
+            tStart = namespace.indexOf(".view.") + 2;
+            tEnd = tStart + 4;
+            break;
+        default:
+            throw `Invalid type: "${type}".`;
+            break;
+    }
+
+    let className = namespace.substring(tEnd, namespace.length).trim();
+    let moduleName = namespace.substring(0, tStart - 2);
+    let aliasMap = _.findWhere(aliasMappings, { name: moduleName });
+    aliasMap = aliasMap ? aliasMap : { name: moduleName, prefix: moduleName };
+
+    let metadata = {
+        namespace: namespace,
+        className: className,
+        moduleName: moduleName,
+        extend: extend,
+        type: type,
+        aliasMap: aliasMap,
+        alias: `${type}.${aliasMap.prefix}${className}`.toLowerCase()
+    };
+    return metadata;
+}
+
+function resolveDependencies(src, dest, dependency, formatCode, extras) {
     let referenceClass = replaceAll(dependency, '"', '');
     glob(src, function (err, files) {
         let classes = [];
@@ -636,7 +772,19 @@ function resolveDependencies(src, dest, dependency, formatCode) {
         });
 
         if (_.indexOf(classes, referenceClass) === -1) {
-            let data = formatContent(formatCode, "Ext.define('" + referenceClass + "', {});");
+            log("[" + colors().grey("mock") + "] " + colors().green("Generating mock file for ") + colors().blue(referenceClass) + " to " + + colors().magenta(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js"));
+            
+            let data = formatContent(formatCode, `Ext.define('${referenceClass}', {});`);
+
+            if(extras) {
+                let metadata = getClassMetadata(referenceClass, extras.type, true, extras.aliasMappings);
+                let body = {
+                    extend: metadata.extend,
+                    alias: metadata.alias
+                };
+                data = formatContent(formatCode, `Ext.define('${referenceClass}', ${JSON.stringify(body)});`);
+            }
+
             ensureDirectoryExistence(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js");
             fs.writeFile(replaceAll(dest, "/", "\\") + "\\" + referenceClass + ".js", data, 'utf-8', function (err) {
 
