@@ -61,11 +61,11 @@ function generateSpecs(file, config) {
                     let extend = _.find(properties, function (p) {
                         return p.key.name === "extend";
                     });
-                    if (extend && extend.value.value === "Ext.app.ViewController" && (specType === "viewcontroller" || specType === "controller")) {
+                    if (extend && (extend.value.value === "Ext.app.ViewController" || extend.value.value.indexOf("ViewController") !== -1) && (specType === "viewcontroller" || specType === "controller")) {
                         generated = generateViewControllerSpec(config, className, properties);
                         spec = generated.spec;
                         controllerType = extend.value.value;
-                    } else if (extend && extend.value.value === "Ext.app.ViewModel" && (specType === "viewmodel" || specType === "controller")) {
+                    } else if (extend && (extend.value.value === "Ext.app.ViewModel" || extend.value.value.indexOf("ViewModel") !== -1) && (specType === "viewmodel" || specType === "controller")) {
                         spec = generateViewModelSpec(config, className, properties);
                         controllerType = extend.value.value;
                     } else {
@@ -85,9 +85,9 @@ function generateSpecs(file, config) {
             if (specType === "model" || specType === "store")
                 file.path = `${config.destDir}\\${className.replace(namespace, "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.${config.type.toLowerCase()}.spec.js`;
             else {
-                if (controllerType === "Ext.app.ViewController") {
+                if (controllerType === "Ext.app.ViewController" || controllerType.indexOf("ViewController") !== -1) {
                     file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewController", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewcontroller.spec.js`;
-                } else if (controllerType === "Ext.app.ViewModel") {
+                } else if (controllerType === "Ext.app.ViewModel" || controllerType.indexOf("ViewModel") !== -1) {
                     file.path = `${config.destDir}\\${className.replace(config.moduleName + ".view.", "").replace("ViewModel", "").replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.viewmodel.spec.js`;
                 }
             }
