@@ -140,12 +140,16 @@ Ext.define('UnitTestEngine', {
             var name = cfg.name,
                 callbacks = cfg.callbacks, base = cfg.base,
                 controller, config, search, binding, isValidExt = false, obj = null;
-
+            
             obj = this.isValidExtObject(name);
+
             controller = obj.obj;
             isValidExt = obj.valid; 
-            if(!controller)
+            if(!controller) {
+                if(cfg.fail)
+                    cfg.fail("'" + cfg.name + "' view controller not initialized");
                 return;
+            }
             config = controller.config;
             search = config.searchConfig;
             binding = config.binding;

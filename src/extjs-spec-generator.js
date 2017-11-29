@@ -664,11 +664,13 @@ function writeDependencyFile(config, className, dependencies, extras) {
 
 function getDefaultAliasMappings() {
     let aliasMappings = [
+        { name: 'i21', prefix: 'sm' },        
         { name: 'AccountsPayable', prefix: 'ap' },
         { name: 'AccountsReceivable', prefix: 'ar' },
         { name: 'CardFueling', prefix: 'cf' },
         { name: 'CashManagement', prefix: 'cm' },
         { name: 'CreditCardRecon', prefix: 'cc' },
+        { name: 'ContractManagement', prefix: 'ct' },
         { name: 'CRM', prefix: 'crm' },
         { name: 'Dashboard', prefix: 'db' },
         { name: 'EnergyTrac', prefix: 'et' },
