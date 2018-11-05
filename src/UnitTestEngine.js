@@ -16,16 +16,32 @@ Ext.define('UnitTestEngine', {
                 + ' does not exists. The field name or data type might have been changed.');
         },
 
-        shouldHaveReference: function (fields, name, reference, inverse) {
+        shouldHaveReference: function (fields, reference) {
             var field = _.find(fields, function (field) {
-                return field.name === name
+                return field.name === reference.name
                     && field.reference
-                    && field.reference.type === reference;
+                    && field.reference.type === reference.type;
             });
-            should.exist(field, "Reference model '" + reference + "' for '" + name + "' does not exists.");
-            if (inverse && reference) {
-                field.reference.inverse.role.should.be.equal(inverse, "The inverse role '"
-                    + inverse + "' is not equal to '" + field.reference.inverse.role + "'.")
+
+            it("should exists", function() {
+                should.exist(field, "Model reference '" + reference.type + "' for '" + reference.name + "' does not exists.");
+            })
+            
+            if(field) {
+                describe("Inverse & Store Config for model reference of " + field.name, function() {
+                    if (_.has(reference, 'inverse')) {
+                        if(_.has(reference.inverse, 'role')) {
+                            field.reference.inverse.role.should.be.equal(reference.inverse.role, "The inverse role '"
+                                + reference.inverse.role + "' is not equal to '" + field.reference.inverse.role + "'.")
+                        }
+        
+                        if(_.has(reference.inverse, 'storeConfig')) {
+                            it('should have a "complete" property in storeConfig', function() {
+                                _.has(field.reference.inverse.storeConfig, 'complete').should.be.true("Can't find the 'complete' property.");
+                            })
+                        }
+                    }
+                })
             }
         },
 
@@ -106,10 +122,10 @@ Ext.define('UnitTestEngine', {
                                     should.exist(model, "Model does not exists.");
                             });
 
-                            it('should have reference model(s)', function () {
+                            describe('Model reference(s)', function () {
                                 if(isValid) {
                                     _.each(referenceList, function (ref) {
-                                        UnitTestEngine.shouldHaveReference(fields, ref.name, ref.type, ref.role);
+                                        UnitTestEngine.shouldHaveReference(model.fields, ref);
                                     })
                                 } else
                                     should.exist(model, "Model does not exists.");
